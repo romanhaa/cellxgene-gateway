@@ -21,13 +21,13 @@ class FileItemSource(ItemSource):
         self,
         base_path,
         name=None,
-        h5ad_suffix=dir_util.h5ad_suffix,
+        accepted_suffixes=dir_util.accepted_suffixes,
         annotation_dir_suffix=dir_util.annotations_suffix,
         annotation_file_suffix=".csv",
     ):
         self._name = name
         self.base_path = base_path
-        self.h5ad_suffix = h5ad_suffix
+        self.accepted_suffixes = accepted_suffixes
         self.annotation_dir_suffix = annotation_dir_suffix
         self.annotation_file_suffix = annotation_file_suffix
 
@@ -35,14 +35,21 @@ class FileItemSource(ItemSource):
     def name(self):
         return self._name or f"Files:{self.base_path}"
 
-    def is_h5ad_file(self, path: str) -> bool:
-        return path.endswith(self.h5ad_suffix) and os.path.isfile(path)
+    def is_accepted_file(self, path: str) -> bool:
+        return (path.endswith(".h5ad") and os.path.isfile(path)) or \
+               (path.endswith(".cxg") and os.path.isdir(path))
 
     def convert_annotation_path_to_h5ad(self, path):
-        return path[: -len(self.annotation_dir_suffix)] + self.h5ad_suffix
+        if path.endswith(".h5ad"):
+            return path[: -len(self.annotation_dir_suffix)] + ".h5ad"
+        else:
+            return path[: -len(self.annotation_dir_suffix)] + ".cxg"
 
     def convert_h5ad_path_to_annotation(self, path):
-        return path[: -len(self.h5ad_suffix)] + self.annotation_dir_suffix
+        if path.endswith(".h5ad"):
+            return path[: -len(".h5ad")] + self.annotation_dir_suffix
+        else:
+            return path[: -len(".cxg")] + self.annotation_dir_suffix
 
     def get_local_path(self, item: FileItem) -> str:
         return os.path.join(self.base_path, item.descriptor)
@@ -83,13 +90,14 @@ class FileItemSource(ItemSource):
         h5ad_paths = [
             filepath
             for filepath, full_path in filepath_map.items()
-            if self.is_h5ad_file(full_path)
+            if self.is_accepted_file(full_path)
         ]
 
         subdirs = [
             filepath
             for filepath, full_path in filepath_map.items()
-            if os.path.isdir(full_path) and not is_annotation_dir(filepath)
+            if os.path.isdir(full_path) and not is_annotation_dir(filepath) \
+                and not full_path.endswith(".cxg")
         ]
 
         items = [
@@ -118,7 +126,7 @@ class FileItemSource(ItemSource):
 
     def lookup_item(self, descriptor):
         full_path = self.full_path(descriptor)
-        if self.is_h5ad_file(full_path):
+        if self.is_accepted_file(full_path):
             return self.shallowitem_from_descriptor(descriptor)
 
     def is_authorized(self, descriptor):

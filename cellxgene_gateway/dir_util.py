@@ -15,11 +15,7 @@ from cellxgene_gateway import env
 from cellxgene_gateway.cellxgene_exception import CellxgeneException
 
 annotations_suffix = "_annotations"
-h5ad_suffix = ".h5ad"
-
-
-def make_h5ad(el):
-    return el[: -len(annotations_suffix)] + h5ad_suffix
+accepted_suffixes = (".h5ad", ".cxg")
 
 
 def make_annotations(el):

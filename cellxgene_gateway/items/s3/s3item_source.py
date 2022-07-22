@@ -29,7 +29,7 @@ class S3ItemSource(ItemSource):
         self,
         bucket,
         name=None,
-        h5ad_suffix=dir_util.h5ad_suffix,
+        accepted_suffixes=dir_util.accepted_suffixes,
         annotation_dir_suffix=dir_util.annotations_suffix,
         annotation_file_suffix=".csv",
     ):
@@ -43,7 +43,7 @@ class S3ItemSource(ItemSource):
                 f"Bucket name should not include s3:// prefix, got {bucket}"
             )
         self.bucket = bucket
-        self.h5ad_suffix = h5ad_suffix
+        self.accepted_suffixes = accepted_suffixes
         self.annotation_dir_suffix = annotation_dir_suffix
         self.annotation_file_suffix = annotation_file_suffix
 
@@ -57,14 +57,20 @@ class S3ItemSource(ItemSource):
     def name(self):
         return self._name or f"Items:{self.url('')}"
 
-    def is_h5ad_url(self, s3url: str) -> bool:
-        return s3url.endswith(self.h5ad_suffix) and self.s3.exists(s3url)
+    def is_accepted_url(self, s3url: str) -> bool:
+        return s3url.endswith(self.accepted_suffixes) and self.s3.exists(s3url)
 
     def convert_annotation_key_to_h5ad(self, s3key):
-        return s3key[: -len(self.annotation_dir_suffix)] + self.h5ad_suffix
+        if s3key.endswith(".h5ad"):
+            return s3key[: -len(self.annotation_dir_suffix)] + ".h5ad"
+        else:
+            return s3key[: -len(self.annotation_dir_suffix)] + ".cxg"
 
     def convert_h5ad_key_to_annotation(self, s3key):
-        return s3key[: -len(self.h5ad_suffix)] + self.annotation_dir_suffix
+        if s3key.endswith(".h5ad"):
+            return s3key[: -len(".h5ad")] + self.annotation_dir_suffix
+        else:
+            return s3key[: -len(".cxg")] + self.annotation_dir_suffix
 
     def get_local_path(self, item: S3Item) -> str:
         return self.url(item.descriptor)
